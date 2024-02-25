@@ -1,4 +1,6 @@
 const User = require("../../model/userModel");
+const Provider = require("../../model/providerModel")
+const Rooms = require("../../model/roomModel")
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
@@ -183,9 +185,52 @@ const verifyOtp = async (req, res) => {
   }
 };
 
+const searchRooms = async (req, res) => {
+  try {
+    console.log(req.body)
+      const { city, latitude, longitude, checkIn, checkOut, adults, children } = req.body;
+
+     
+      const nearbyProviders = await Provider.find({
+          coordinates: {
+              $near: {
+                  $geometry: {
+                      type: "Point",
+                      coordinates: [longitude, latitude]
+                  },
+                  $maxDistance: 10000 
+              }
+          }
+      });
+      console.log("Provider searched",nearbyProviders)
+
+      const providerIds = nearbyProviders.map(provider => provider._id);
+
+    
+      const availableRooms = await Rooms.find({
+          providerId: { $in: providerIds },
+          status: "Available",
+          adults: { $gte: adults },
+          children: { $gte: children }
+        
+      });
+      console.log("Available rooms",availableRooms)
+
+      res.json({ success: true, availableRooms });
+  } catch (err) {
+      console.error(err);
+      res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+
+
+
+
 module.exports = {
   userRegistration,
   userLogin,
   reqForOtp,
   verifyOtp,
+  searchRooms
 };

@@ -11,6 +11,8 @@ userRoute.post('/login',userController.userLogin)
 userRoute.post("/reqotp",userController.reqForOtp)
 userRoute.post("/verifyotp",userController.verifyOtp)
 
+userRoute.post("/searchrooms",userController.searchRooms)
+
 
 
 module.exports = userRoute

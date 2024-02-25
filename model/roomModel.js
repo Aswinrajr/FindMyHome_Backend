@@ -1,6 +1,11 @@
 const mongoose = require("mongoose");
 
 const roomSchema = new mongoose.Schema({
+  providerId:{
+    type:mongoose.Schema.Types.ObjectId,
+    ref:"Provider"
+
+  },
   roomType: {
     type: String,
     required: true,
@@ -21,6 +26,7 @@ const roomSchema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
+ 
   },
   amenities: {
     food: {

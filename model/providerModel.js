@@ -24,11 +24,23 @@ const providerSchema = new mongoose.Schema({
         type:String,
 
     },
-    providerImage:{
-        type:String
+    ProviderCity:{
+        type:String,
+
     },
+    ProviderState:{
+        type:String
+
+    },
+    providerImage:[{
+        type:String
+    }],
     providerType:{
         type:String,
+
+    },
+    providerRooms:{
+        type:Number
 
     },
     providerReview:{
@@ -37,7 +49,18 @@ const providerSchema = new mongoose.Schema({
     status:{
         type:String,
         default:"Active"
-    }
+    },
+    Verified:{
+        type:String,
+        default:false
+    },
+    Profile:{
+        type:String,
+        default:"Not Completed"
+    },
+    coordinates:[{
+        type:Number
+    }]
 })
 
 module.exports = mongoose.model("provider",providerSchema)
