@@ -1,9 +1,11 @@
 const Provider = require("../../model/providerModel");
+
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const path = require("path");
 const Room = require("../../model/roomModel");
+const Order = require("../../model/orderModel");
 
 const SID = process.env.TWILIO_ACCOUNT_SID_ID;
 const TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -369,15 +371,13 @@ const saveProviderData = async (req, res) => {
 
  
 
-    // Split the coordinates string at the comma delimiter
     const [latitudeStr, longitudeStr] = coordinates.split(',');
-    
-    // Parse the latitude and longitude strings into numbers
+   
     const latitude = parseFloat(latitudeStr);
     const longitude = parseFloat(longitudeStr);
     
-    console.log("Latitude:", latitude); // Output: Latitude: 8.5241391
-    console.log("Longitude:", longitude); // Output: Longitude: 76.9366376
+    console.log("Latitude:", latitude); 
+    console.log("Longitude:", longitude); 
     
 
     const updateProvider = await Provider.findOneAndUpdate(
@@ -408,6 +408,41 @@ const saveProviderData = async (req, res) => {
   }
 };
 
+
+const getBookingData = async (req, res) => {
+  try {
+    const email = req.body.provider.provider;
+    console.log("Welcome to booking list", email);
+
+
+    const providerData = await Provider.findOne({ providerEmail: email, status: "Active" });
+    console.log("Provider Data in provider", providerData);
+
+
+    const orderData = await Order.find();
+    console.log("Order data in provider", orderData);
+
+
+    const orderedData = orderData.filter(order => String(order.providerId) === String(providerData._id));
+    console.log("Ordered data in provider", orderedData);
+
+   
+    res.status(200).json({ success: true, data: orderedData });
+  } catch (err) {
+    console.log("Error in get booked data", err);
+    
+    res.status(500).json({ success: false, message: "Error in get booked data", error: err.message });
+  }
+};
+
+
+
+
+
+
+
+
+
 module.exports = {
   providerLogin,
   providerSignUp,
@@ -419,4 +454,5 @@ module.exports = {
   updateRooms,
   completeProviderData,
   saveProviderData,
+  getBookingData
 };

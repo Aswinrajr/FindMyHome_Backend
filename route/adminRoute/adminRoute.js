@@ -13,7 +13,8 @@ adminRoute.post("/verifyotp",adminController.verifyOtp)
 adminRoute.get("/users",adminController.getUsersData)
 adminRoute.post("/users/action",adminController.userAction)
 adminRoute.get("/providers",adminController.getProviderData)
-adminRoute.post("/providers/action",adminController.providerAction)
+adminRoute.post("/providers/action/:id",adminController.providerAction)
+adminRoute.get("/getallbookingdata",adminController.getAdminBookingData)
 
 
 

@@ -33,5 +33,7 @@ providerRoute.post("/rooms/addrooms", upload.array("images", 5), providerControl
 providerRoute.get("/rooms/editrooms/:id",providerController.roomDataId)
 providerRoute.post("/rooms/updaterooms/:id",upload.array("images", 5),providerController.updateRooms)
 
+providerRoute.post("/getbookingdata",providerController.getBookingData)
+
 
 module.exports = providerRoute;

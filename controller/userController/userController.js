@@ -1,10 +1,16 @@
 const User = require("../../model/userModel");
-const Provider = require("../../model/providerModel")
-const Rooms = require("../../model/roomModel")
+const Provider = require("../../model/providerModel");
+const Rooms = require("../../model/roomModel");
+const Order = require("../../model/orderModel")
+
+
+
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const path = require("path");
+const mongoose = require("mongoose");
+const Room = require("../../model/roomModel");
 
 const SID = process.env.TWILIO_ACCOUNT_SID_ID;
 const TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -46,12 +52,11 @@ const userRegistration = async (req, res) => {
           userPassword: hashPassword,
         });
         await newUser.save();
-        await twilio.messages
-        .create({
+        await twilio.messages.create({
           body: `welcome ${userName} you are successfully registerd with FindMyHome`,
           to: `+91 ${mobile}`,
           from: +16464010343,
-        })
+        });
         console.log("Sign Up successful");
         return res.status(201).json({ message: "Sign Up successful" });
       } else {
@@ -75,7 +80,7 @@ const userLogin = async (req, res) => {
     console.log("User", user);
 
     if (user) {
-      console.log(user.status)
+      console.log(user.status);
       if (user.status == "Active") {
         const matchPassword = await bcrypt.compare(password, user.userPassword);
         if (matchPassword) {
@@ -185,46 +190,196 @@ const verifyOtp = async (req, res) => {
   }
 };
 
+// const searchRooms = async (req, res) => {
+//   try {
+//     console.log(req.body);
+//     const { city, latitude, longitude, checkIn, checkOut, adults, children } =
+//       req.body;
+
+//     const nearbyProviders = await Provider.find({
+//       coordinates: {
+//         $near: {
+//           $geometry: {
+//             coordinates: [longitude, latitude],
+//           },
+//           $maxDistance: 1000000000,
+//         },
+//       },
+//     });
+//     console.log("Provider searched", nearbyProviders);
+
+//     const providerIds = nearbyProviders.map((provider) => provider._id);
+
+//     const availableRooms = await Rooms.find({
+//       providerId: { $in: providerIds },
+//       status: "Available",
+//       adults: { $gte: adults },
+//       children: { $gte: children },
+//     });
+//     console.log("Available rooms", availableRooms);
+
+//     res.json({ success: true, availableRooms });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ success: false, message: "Internal server error" });
+//   }
+// };
+
 const searchRooms = async (req, res) => {
   try {
-    console.log(req.body)
-      const { city, latitude, longitude, checkIn, checkOut, adults, children } = req.body;
+    console.log(req.body);
+    const { city, latitude, longitude, checkIn, checkOut, adults, children } =
+      req.body;
 
-     
-      const nearbyProviders = await Provider.find({
-          coordinates: {
-              $near: {
-                  $geometry: {
-                      type: "Point",
-                      coordinates: [longitude, latitude]
-                  },
-                  $maxDistance: 10000 
-              }
-          }
-      });
-      console.log("Provider searched",nearbyProviders)
+    const nearbyProviders = await Provider.aggregate([
+      {
+        $geoNear: {
+          near: { type: "Point", coordinates: [longitude, latitude] },
+          distanceField: "distance",
+          spherical: true,
+          key: "coordinates",
+          maxDistance: 1000000000,
+          distanceMultiplier: 0.001,
+        },
+      },
+    ]);
 
-      const providerIds = nearbyProviders.map(provider => provider._id);
+    console.log("Provider searched", nearbyProviders);
 
-    
-      const availableRooms = await Rooms.find({
-          providerId: { $in: providerIds },
-          status: "Available",
-          adults: { $gte: adults },
-          children: { $gte: children }
-        
-      });
-      console.log("Available rooms",availableRooms)
+    console.log("Available rooms", nearbyProviders);
 
-      res.json({ success: true, availableRooms });
+    res.status(200).json({ success: true, nearbyProviders });
   } catch (err) {
-      console.error(err);
-      res.status(500).json({ success: false, message: "Internal server error" });
+    console.error(err);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const getCombinedData = async (req, res) => {
+  try {
+    console.log("Welcome to combined data", req.body);
+    const formData = req.body.formData;
+    const nearbyProviders = req.body.nearbyProviders;
+
+    console.log("Formdata", formData);
+    console.log("nearbyProviders", nearbyProviders);
+
+    const roomData = await Room.find({ status: "Available" });
+    console.log("Roomdata", roomData);
+
+    const combinedData = [];
+
+    nearbyProviders.forEach((provider) => {
+      roomData.forEach((room) => {
+        if (String(provider._id) === String(room.providerId)) {
+          combinedData.push({
+            room: room,
+            distance: provider.distance,
+          });
+        }
+      });
+    });
+
+    console.log("..................................");
+    console.log("combinedData", combinedData);
+    console.log("..................................");
+    res.status(200).json(combinedData);
+  } catch (error) {
+    console.error("Error in getCombinedData:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+const bookRoom = async (req, res) => {
+  try {
+    console.log("Welcome to room booking", req.body);
+    const { formData } = req.body.data;
+
+    let user = req.body.user;
+    user = JSON.parse(user);
+    const email = user.user;
+    console.log(email);
+
+    const { id } = req.params;
+    console.log("Room id", id);
+
+    const roomData = await Rooms.findOne({ _id: id, status: "Available" });
+    const providerData = await Provider.findOne({ _id: roomData.providerId });
+    const userData = await User.findOne({ userEmail: email });
+
+    console.log("Room data", roomData);
+    console.log("providerData", providerData);
+    console.log("userData", userData);
+
+    const checkInDate = new Date(formData.checkIn);
+    const checkOutDate = new Date(formData.checkOut);
+
+    const timeDifference = Math.abs(
+      checkOutDate.getTime() - checkInDate.getTime()
+    );
+    const numberOfDays = Math.ceil(timeDifference / (1000 * 3600 * 24));
+
+    const bookingDetails = {
+      userId: userData._id,
+      roomId: roomData._id,
+      providerId: providerData._id,
+      roomType: roomData.roomType,
+      adults: formData.adults,
+      children: formData.children,
+      numberOfDays,
+      checkInDate: formData.checkIn,
+      checkOutDate: formData.checkOut,
+      amount: roomData.amount,
+      totalAmounttoPay: numberOfDays * roomData.amount,
+      city: formData.city,
+    };
+
+    console.log(bookingDetails);
+
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "Room booked successfully",
+        bookingDetails,
+      });
+  } catch (err) {
+    console.log("Error in room booking", err);
+
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Error in room booking",
+        error: err.message,
+      });
   }
 };
 
 
 
+const placeOrder = async (req, res) => {
+  try {
+    console.log("Welcome to place order", req.body);
+    const orderDetails = req.body;
+
+    const newOrder = new Order(orderDetails);
+
+    const savedOrder = await newOrder.save();
+
+    console.log("Order saved successfully:", savedOrder);
+
+   
+    res.status(200).json({ success: true, message: "Order placed successfully", order: savedOrder });
+  } catch (err) {
+    console.log("Error in placing the order:", err);
+    
+
+    res.status(500).json({ success: false, message: "Error in placing the order", error: err.message });
+  }
+};
+
+module.exports = { placeOrder };
 
 
 module.exports = {
@@ -232,5 +387,8 @@ module.exports = {
   userLogin,
   reqForOtp,
   verifyOtp,
-  searchRooms
+  searchRooms,
+  getCombinedData,
+  bookRoom,
+  placeOrder
 };
