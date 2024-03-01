@@ -1,6 +1,8 @@
 const Admin = require("../../model/adminModel");
 const User = require("../../model/userModel");
 const Provider = require("../../model/providerModel");
+const Order = require("../../model/orderModel");
+
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
@@ -172,7 +174,6 @@ const getUsersData = async (req, res) => {
   }
 };
 
-
 const userAction = async (req, res) => {
   try {
     console.log("User action", req.body);
@@ -204,23 +205,33 @@ const getProviderData = async (req, res) => {
   }
 };
 
-
 const providerAction = async (req, res) => {
   try {
-    console.log("Provider action", req.body);
-    const providers = await Provider.findOne({ _id: req.body.providerId });
-    if (providers.status === "Active") {
-      providers.status = "Blocked";
-    } else {
-      providers.status = "Active";
+    console.log("Provider action", req.params);
+    const provider = await Provider.findById({ _id: req.params.id });
+    if (!provider) {
+      return res.status(404).json({ message: "Provider not found" });
     }
-    await providers.save();
+    provider.status = provider.status === "Active" ? "Blocked" : "Active";
+    await provider.save();
     console.log(provider);
     res
       .status(200)
-      .json({ message: "Provider status updated successfully", providers });
+      .json({ message: "Provider status updated successfully", provider });
   } catch (error) {
-    console.log("error in provider actions", error);
+    console.log("Error in provider action:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const getAdminBookingData = async (req, res) => {
+  try {
+    console.log("Welcome to admin booking data");
+    const orderData = await Order.find();
+    console.log(orderData);
+    res.status(200).json({ orders: orderData });
+  } catch (err) {
+    console.log("Error in getting admin booking data", err);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
@@ -233,5 +244,6 @@ module.exports = {
   getUsersData,
   userAction,
   providerAction,
-  getProviderData
+  getProviderData,
+  getAdminBookingData,
 };

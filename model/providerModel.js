@@ -20,7 +20,7 @@ const providerSchema = new mongoose.Schema({
         type:String,
         required:true
     },
-    providerAdress:{
+    providerAddress:{
         type:String,
 
     },

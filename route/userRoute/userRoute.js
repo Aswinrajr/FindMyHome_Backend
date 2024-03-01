@@ -12,6 +12,10 @@ userRoute.post("/reqotp",userController.reqForOtp)
 userRoute.post("/verifyotp",userController.verifyOtp)
 
 userRoute.post("/searchrooms",userController.searchRooms)
+userRoute.post("/fetchdata",userController.getCombinedData)
+userRoute.post("/bookroom/:id",userController.bookRoom)
+userRoute.post("/placeorder",userController.placeOrder)
+
 
 
 
