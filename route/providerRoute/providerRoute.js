@@ -25,6 +25,7 @@ providerRoute.post("/reqotp", providerController.providerReqOtp);
 providerRoute.post("/verifyotp", providerController.providerVerifyOtp);
 
 providerRoute.post("/completedata",providerController.completeProviderData)
+providerRoute.post("/savedata",upload.array("images", 5),providerController.saveProviderData)
 
 
 providerRoute.get("/rooms",providerController.getRoomData)

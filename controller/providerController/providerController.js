@@ -57,9 +57,11 @@ const providerLogin = async (req, res) => {
           console.log("Password is incorrect");
           res.status(401).json({ msg: "Incorrect password" });
         }
-      }else{
-        console.log("User is blocked ")
-        res.status(401).json({ msg: "Something went wrong please contact admin" });
+      } else {
+        console.log("User is blocked ");
+        res
+          .status(401)
+          .json({ msg: "Something went wrong please contact admin" });
       }
     } else {
       console.log("Provider is not registered, please sign up");
@@ -204,7 +206,20 @@ const providerVerifyOtp = async (req, res) => {
 
 const getRoomData = async (req, res) => {
   try {
-    const roomsData = await Room.find({ status: "Available" });
+    const { email } = req.query;
+    console.log("email", email);
+
+    const provider = await Provider.findOne({ providerEmail: email });
+    console.log(provider);
+
+    if (!provider) {
+      return res.status(404).json({ error: "Provider not found" });
+    }
+
+    const providerId = provider._id;
+
+    const roomsData = await Room.find({ providerId, status: "Available" });
+
     console.log("roomsData", roomsData);
     res.status(200).json(roomsData);
   } catch (err) {
@@ -215,11 +230,18 @@ const getRoomData = async (req, res) => {
 
 const providerAddrooms = async (req, res) => {
   console.log("Req.body", req.body);
-  const { roomType, adults, children, amount, status, amenities } = req.body;
+  const { roomType, adults, children, amount, status, amenities, email } =
+    req.body;
+  const { provider } = JSON.parse(email);
+
   const images = req.files ? req.files.map((file) => file.path) : [];
+  console.log("Add room ", email);
 
   try {
+    const providerId = await Provider.findOne({ providerEmail: provider });
+    console.log("Provider Add room", providerId);
     const newRoom = new Room({
+      providerId: providerId._id,
       roomType,
       adults,
       children,
@@ -287,18 +309,104 @@ const updateRooms = async (req, res) => {
   }
 };
 
-
-const completeProviderData = async(req,res)=>{
-  try{
-    console.log("Welcome to complete the data")
-
-  }catch(err){
-    console.log("Error in completing the data")
+const completeProviderData = async (req, res) => {
+  try {
+    const { provider } = JSON.parse(req.body.providerEmail);
+    console.log("Provider Email:", provider);
+    const providerData = await Provider.findOne({ providerEmail: provider });
+    console.log(providerData);
+    if (providerData.Profile === "Not Completed") {
+      res.json({ msg: "Complete your profile Data" });
+    } else {
+      res.status(200).json({ success: true });
+    }
+  } catch (err) {
+    console.error("Error completing provider data:", err);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
+};
+const saveProviderData = async (req, res) => {
+  try {
+    console.log("welcome to save provider data", req.body);
+    const { recidenceName, rooms, location, facilities, city, coordinates } =
+      req.body;
+    const { provider } = JSON.parse(req.body.providerEmail);
+    const images = req.files ? req.files.map((file) => file.path) : [];
+    console.log("recidenceName", recidenceName);
+    console.log("room", rooms);
+    console.log("location", location);
+    console.log("facilities", facilities);
+    console.log("images", images);
+    console.log("providerEmail", provider);
+    console.log("city", city);
+    console.log("coordinates", coordinates);
 
-}
+    const postalCodeRegex = /\b\d{6}\b/;
+    const postalCodeMatch = location.match(postalCodeRegex);
+    const postalCode = postalCodeMatch ? postalCodeMatch[0] : "";
 
+    const addressWithoutPostalCode = location
+      .replace(postalCodeRegex, "")
+      .trim();
 
+    const addressComponents = addressWithoutPostalCode
+      .split(",")
+      .map((component) => component.trim());
+
+    const house = addressComponents.shift();
+
+    const country = addressComponents.pop();
+
+    const state = addressComponents.pop();
+
+    const street = addressComponents.join(", ");
+
+    console.log("House:", house);
+    console.log("Street:", street);
+    console.log("State:", state);
+    console.log("Country:", country);
+    console.log("Postal Code:", postalCode);
+
+ 
+
+    // Split the coordinates string at the comma delimiter
+    const [latitudeStr, longitudeStr] = coordinates.split(',');
+    
+    // Parse the latitude and longitude strings into numbers
+    const latitude = parseFloat(latitudeStr);
+    const longitude = parseFloat(longitudeStr);
+    
+    console.log("Latitude:", latitude); // Output: Latitude: 8.5241391
+    console.log("Longitude:", longitude); // Output: Longitude: 76.9366376
+    
+
+    const updateProvider = await Provider.findOneAndUpdate(
+      { providerEmail: provider },
+      {
+        $set: {
+          providerAddress: location,
+          ProviderCity: city,
+          ProviderState: state,
+          providerImage: images,
+          providerRooms: parseInt(rooms),
+          Profile: "Completed",
+          coordinates: [longitude, latitude],
+        },
+      },
+      { new: true }
+    );
+
+    console.log("ProviderSaved successfully", updateProvider);
+
+    res.json({ success: true, message: "Provider data saved successfully" });
+  } catch (err) {
+    console.log("error in saving the data", err);
+
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to save provider data" });
+  }
+};
 
 module.exports = {
   providerLogin,
@@ -309,5 +417,6 @@ module.exports = {
   getRoomData,
   roomDataId,
   updateRooms,
-  completeProviderData
+  completeProviderData,
+  saveProviderData,
 };
